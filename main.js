@@ -3,8 +3,17 @@ const { Telegraf } = require('telegraf');
 const { translate } = require('@vitalets/google-translate-api');
 const fs = require('fs');
 
+
+const BOT_TOKEN = process.env.BOT_TOKEN;
+
+if (!BOT_TOKEN) {
+    console.error('ОШИБКА: Переменная BOT_TOKEN не найдена! Добавьте её в настройках деплоя.');
+    process.exit(1);
+}
+
+const bot = new Telegraf(BOT_TOKEN);
+
 // ⚠️ Вставьте свой токен сюда!
-const bot = new Telegraf('7331778858:AAHqt4kJtJjTVByXKGRAeVRwQcXwXcxJgZs'); 
 const USERS_FILE = 'users.json';
 
 // --- Функции для работы с пользователями (Оставлены без изменений) ---
@@ -71,3 +80,6 @@ bot.on('text', async (ctx) => {
 
 bot.launch();
 console.log("Bot started and using FREE Google Translate API...");
+
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
