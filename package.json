@@ -1,9 +1,8 @@
 {
   "name": "german-translate-bot",
   "version": "1.0.0",
-  "main": "bot.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node main.js"
   },
   "dependencies": {
     "telegraf": "^4.15.0",
