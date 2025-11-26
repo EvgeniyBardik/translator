@@ -64,10 +64,16 @@ bot.on('text', async (ctx) => {
 
     try {
         // Выполняем перевод
-        const result = await translate(text, { to: 'de' });
+        let result = await translate(text, { to: 'de' });
         
-        const translated = result.text;
+        let translated = result.text;
+
+        if (translated?.length && translated === text) {
+            result = await translate(text, { to: 'uk' });
+        }
         
+        translated = result.text;
+
         // Отправляем переведенный текст
         await ctx.reply(translated);
         console.log(`✅ Переведено: "${text}" -> "${translated}"`);
