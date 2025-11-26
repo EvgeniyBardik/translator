@@ -2,6 +2,7 @@ const { Telegraf } = require('telegraf');
 // 💡 Заменили axios на библиотеку Google Translate API
 const { translate } = require('@vitalets/google-translate-api');
 const fs = require('fs');
+const fsp = require('fs').promises;
 
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -18,31 +19,40 @@ const USERS_FILE = 'users.json';
 
 // --- Функции для работы с пользователями (Оставлены без изменений) ---
 
-// Загружаем JSON или создаём пустой
-function loadUsers() {
-    if (!fs.existsSync(USERS_FILE)) {
-        fs.writeFileSync(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
+// Асинхронная загрузка пользователей
+async function loadUsersAsync() {
+    try {
+        await fsp.access(USERS_FILE);
+    } catch {
+        await fsp.writeFile(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
     }
-    return JSON.parse(fs.readFileSync(USERS_FILE));
+    const content = await fsp.readFile(USERS_FILE, 'utf-8');
+    return JSON.parse(content);
 }
-// Сохраняем JSON
-function saveUsers(data) {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(data, null, 2));
+// Асинхронное сохранение пользователей
+async function saveUsersAsync(data) {
+    await fsp.writeFile(USERS_FILE, JSON.stringify(data, null, 2));
 }
-// Добавление юзера
-function addUser(id, username) {
-    const data = loadUsers();
-    if (!data.users.find(u => u.id === id)) {
-        data.users.push({ id, username });
-        saveUsers(data);
-    }
+// Добавление пользователя в фоне (fire-and-forget)
+function addUserAsync(id, username) {
+    (async () => {
+        try {
+            const data = await loadUsersAsync();
+            if (!data.users.find(u => u.id === id)) {
+                data.users.push({ id, username });
+                await saveUsersAsync(data);
+            }
+        } catch (err) {
+            console.error('Ошибка при добавлении пользователя:', err);
+        }
+    })();
 }
 
 // --- Обработка команд и текста ---
 
 // Приветствие при первом старте
 bot.start(async (ctx) => {
-    addUser(ctx.from.id, ctx.from.username);
+    addUserAsync(ctx.from.id, ctx.from.username);
     await ctx.reply(
         "Hello! I am a bot that automatically translates any text to German. Just send me anything you want to translate."
     );
@@ -51,7 +61,7 @@ bot.start(async (ctx) => {
 // Команда админа
 bot.command('admin', async (ctx) => {
     if (ctx.from.id !== 6313048757) return; // защита
-    const data = loadUsers();
+    const data = await loadUsersAsync();
     await ctx.reply("Users JSON:\n```\n" + JSON.stringify(data, null, 2) + "\n```", {
         parse_mode: "Markdown"
     });
@@ -59,7 +69,7 @@ bot.command('admin', async (ctx) => {
 
 // 🚀 НОВЫЙ БЛОК: Бесплатный перевод текста через Google Translate
 bot.on('text', async (ctx) => {
-    addUser(ctx.from.id, ctx.from.username);
+    addUserAsync(ctx.from.id, ctx.from.username);
     const text = ctx.message.text;
 
     try {
@@ -69,7 +79,7 @@ bot.on('text', async (ctx) => {
         let translated = result.text;
 
         if (translated?.length && translated === text) {
-            result = await translate(text, { to: 'uk' });
+            result = await translate(text, { to: 'ua' });
         }
         
         translated = result.text;
